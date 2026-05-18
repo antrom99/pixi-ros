@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from lxml import etree
+import xml.etree.ElementTree as etree
 
 
 @dataclass
@@ -59,7 +59,7 @@ class PackageXML:
         try:
             tree = etree.parse(str(path))
             root = tree.getroot()
-        except etree.XMLSyntaxError as e:
+        except etree.ParseError as e:
             raise ValueError(f"Invalid XML in {path}: {e}") from e
 
         # Get format version (defaults to 1 if not specified)
