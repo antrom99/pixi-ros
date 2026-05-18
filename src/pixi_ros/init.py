@@ -703,10 +703,43 @@ def _ensure_dependencies(
         }
     )
 
+    # Detect if a [feature.<distro>] section already exists in pixi.toml.
+    # When it does, write workspace deps there instead of [dependencies] so that
+    # they don't bleed into other environments (jazzy, noetic, etc.).
+    use_feature = "feature" in config and distro in config.get("feature", {})
+
+    def _get_deps_table(target_config: dict) -> dict:
+        """Return the right dependencies table based on feature detection."""
+        if use_feature:
+            feature_table = target_config["feature"][distro]
+            if "dependencies" not in feature_table:
+                feature_table["dependencies"] = tomlkit.table()
+            return feature_table["dependencies"]
+        if "dependencies" not in target_config:
+            target_config["dependencies"] = tomlkit.table()
+        return target_config["dependencies"]
+
+    def _get_unix_deps_table(target_config: dict) -> dict:
+        """Return the right [target.unix.dependencies] table based on feature detection."""
+        if use_feature:
+            feature_table = target_config["feature"][distro]
+            if "target" not in feature_table:
+                feature_table["target"] = tomlkit.table()
+            if "unix" not in feature_table["target"]:
+                feature_table["target"]["unix"] = tomlkit.table()
+            if "dependencies" not in feature_table["target"]["unix"]:
+                feature_table["target"]["unix"]["dependencies"] = tomlkit.table()
+            return feature_table["target"]["unix"]["dependencies"]
+        if "target" not in target_config:
+            target_config["target"] = tomlkit.table()
+        if "unix" not in target_config["target"]:
+            target_config["target"]["unix"] = tomlkit.table()
+        if "dependencies" not in target_config["target"]["unix"]:
+            target_config["target"]["unix"]["dependencies"] = tomlkit.table()
+        return target_config["target"]["unix"]["dependencies"]
+
     # Create or get dependencies table
-    if "dependencies" not in config:
-        config["dependencies"] = tomlkit.table()
-    dependencies = config["dependencies"]
+    dependencies = _get_deps_table(config)
 
     # Add base ROS dependencies with comment
     base_deps = {
@@ -790,8 +823,6 @@ def _ensure_dependencies(
                 pkg_name = conda_pkgs[0] if conda_pkgs else ros_pkg
                 dependencies.add(tomlkit.comment(f'{pkg_name} = "*"'))
 
-    config["dependencies"] = dependencies
-
     # Add platform-specific dependencies if multiple mapping platforms
     # First, identify unix dependencies (available on both linux and osx, but not win)
     unix_deps = {}
@@ -822,14 +853,7 @@ def _ensure_dependencies(
 
         # Add unix section if there are unix-specific dependencies
         if unix_deps:
-            if "target" not in config:
-                config["target"] = tomlkit.table()
-            if "unix" not in config["target"]:
-                config["target"]["unix"] = tomlkit.table()
-            if "dependencies" not in config["target"]["unix"]:
-                config["target"]["unix"]["dependencies"] = tomlkit.table()
-
-            target_deps = config["target"]["unix"]["dependencies"]
+            target_deps = _get_unix_deps_table(config)
 
             if len(target_deps) == 0:
                 target_deps.add(
