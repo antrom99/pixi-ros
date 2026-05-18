@@ -7,7 +7,8 @@ name = "pixi-ros"
 version = "0.6.1"
 description = "Pixi extension for ROS package management"
 authors = [
-    { name = "Ruben Arts", email = "ruben@prefix.dev" }
+    { name = "Ruben Arts", email = "ruben@prefix.dev" },
+    { name = "Antonio Romano", email = "antonio.romano9900@gmail.com" },
 ]
 readme = "README.md"
 license = "MIT"
